@@ -224,7 +224,7 @@ function PluginBlockNodeView({
 	const blockDef = registry.get(blockType);
 	const hasFields = blockDef?.fields && blockDef.fields.length > 0;
 	const original = node.attrs[PORTABLE_TEXT_BLOCK_ATTR] as Record<string, unknown> | null;
-	const hasIdentity = typeof original?.id === "string" || typeof original?.url === "string";
+	const hasIdentity = !!id || typeof original?.id === "string" || typeof original?.url === "string";
 	const canEditUrl = !hasFields && (!!blockDef || hasIdentity);
 	const canEdit = !!blockDef || canEditUrl;
 

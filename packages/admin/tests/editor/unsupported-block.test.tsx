@@ -2,6 +2,7 @@ import type { Editor } from "@tiptap/react";
 import * as React from "react";
 import { describe, expect, it, vi } from "vitest";
 
+import { PORTABLE_TEXT_BLOCK_ATTR } from "../../src/components/editor/portableTextIdentity.js";
 import { PortableTextEditor } from "../../src/components/PortableTextEditor.js";
 import { render } from "../utils/render.js";
 
@@ -33,6 +34,18 @@ const buttonsBlock = {
 		},
 	],
 };
+
+function pasteBlockThroughHtml(editor: Editor) {
+	editor.commands.setNodeSelection(0);
+	const { dom } = editor.view.serializeForClipboard(editor.state.selection.content());
+	editor.commands.clearContent();
+	editor.commands.focus("start");
+	const clipboardData = new DataTransfer();
+	clipboardData.setData("text/html", dom.innerHTML);
+	editor.view.dom.dispatchEvent(
+		new ClipboardEvent("paste", { clipboardData, bubbles: true, cancelable: true }),
+	);
+}
 
 describe("unsupported blocks", () => {
 	it("does not offer URL editing for imported buttons and preserves them when editing surrounding text", async () => {
@@ -94,6 +107,7 @@ describe("unsupported blocks", () => {
 		{ _type: "file", url: "https://example.com/download.pdf" },
 		{ _type: "embed", url: "" },
 		{ _type: "test.embed", id: "https://example.com/embed" },
+		{ ...buttonsBlock, id: "https://example.com/previously-saved-stray-id" },
 	])("still edits an unregistered $_type block's existing identity", async (identity) => {
 		const onChange = vi.fn();
 		const block = { ...identity, _key: "url-block-1" };
@@ -114,6 +128,63 @@ describe("unsupported blocks", () => {
 					: { id: "https://example.com/after" }),
 			});
 		});
+	});
+
+	it.each([
+		{ _type: "embed", _key: "embed-1", url: "https://example.com/embed" },
+		{ _type: "file", _key: "file-1", url: "https://example.com/download.pdf" },
+	])(
+		"keeps URL actions on an unregistered $_type after an HTML clipboard round-trip",
+		async (block) => {
+			let editor: Editor | undefined;
+			const screen = await render(
+				<PortableTextEditor
+					value={[block]}
+					onEditorReady={(instance) => {
+						editor = instance;
+					}}
+				/>,
+			);
+			await vi.waitFor(() => expect(editor).toBeDefined());
+			pasteBlockThroughHtml(editor!);
+			await vi.waitFor(() => {
+				const pasted = editor!.state.doc.firstChild!;
+				expect(pasted.attrs[PORTABLE_TEXT_BLOCK_ATTR]).toBeNull();
+				expect(pasted.attrs.id).toBe(block.url);
+			});
+			for (const name of ["Edit URL", "Copy URL", "Open in new tab"]) {
+				await expect.element(screen.getByRole("button", { name, exact: true })).toBeVisible();
+			}
+			screen.getByRole("button", { name: "Edit URL", exact: true }).element().click();
+			await screen.getByPlaceholder("Enter URL...").fill("https://example.com/after-paste");
+			screen.getByRole("button", { name: "Save", exact: true }).element().click();
+			screen.getByRole("button", { name: "Edit URL", exact: true }).element().click();
+			await expect
+				.element(screen.getByPlaceholder("Enter URL..."))
+				.toHaveValue("https://example.com/after-paste");
+		},
+	);
+
+	it("does not offer URL editing for buttons after an HTML clipboard round-trip", async () => {
+		let editor: Editor | undefined;
+		const screen = await render(
+			<PortableTextEditor
+				value={[buttonsBlock]}
+				onEditorReady={(instance) => {
+					editor = instance;
+				}}
+			/>,
+		);
+		await vi.waitFor(() => expect(editor).toBeDefined());
+		pasteBlockThroughHtml(editor!);
+		await vi.waitFor(() => {
+			expect(editor!.state.doc.firstChild!.attrs[PORTABLE_TEXT_BLOCK_ATTR]).toBeNull();
+			expect(editor!.state.doc.firstChild!.attrs.data.buttons).toEqual(buttonsBlock.buttons);
+		});
+		await expect.element(screen.getByText("Buttons", { exact: true })).toBeVisible();
+		for (const name of ["Edit URL", "Copy URL", "Open in new tab"]) {
+			expect(screen.getByRole("button", { name, exact: true }).query()).toBeNull();
+		}
 	});
 
 	it("updates the available editor when a block definition arrives after mount", async () => {

@@ -3467,6 +3467,8 @@ function mediaItemToImageAttrs(item: MediaItem) {
 	};
 }
 
+const EMPTY_PLUGIN_BLOCKS: PluginBlockDef[] = [];
+
 /**
  * Portable Text Editor Component
  */
@@ -3477,7 +3479,7 @@ export function PortableTextEditor({
 	className,
 	editable = true,
 	"aria-labelledby": ariaLabelledby,
-	pluginBlocks = [],
+	pluginBlocks = EMPTY_PLUGIN_BLOCKS,
 	focusMode: controlledFocusMode,
 	onEditorReady,
 	minimal = false,
