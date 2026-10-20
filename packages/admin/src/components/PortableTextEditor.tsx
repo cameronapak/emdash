@@ -203,6 +203,7 @@ import {
 	registerPluginBlocks,
 	resolveIcon,
 } from "./editor/PluginBlockNode";
+import { PORTABLE_TEXT_BLOCK_ATTR } from "./editor/portableTextIdentity.js";
 import { runTableAction } from "./editor/TableActions.js";
 import { createTableCellSafety, type TablePasteRejection } from "./editor/TableCellSafety.js";
 import { createTableClipboard } from "./editor/TableClipboard.js";
@@ -407,7 +408,6 @@ const attrStr = (v: unknown): string | undefined => (typeof v === "string" && v 
 const attrNum = (v: unknown): number | undefined =>
 	typeof v === "number" && Number.isFinite(v) && v > 0 ? v : undefined;
 
-const PORTABLE_TEXT_BLOCK_ATTR = "emdashPortableTextBlock";
 const PORTABLE_TEXT_KEY_ATTR = "emdashPortableTextKey";
 const PORTABLE_TEXT_SPAN_MARK = "emdashPortableTextSpan";
 
